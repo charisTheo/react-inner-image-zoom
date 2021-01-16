@@ -67,8 +67,9 @@ class InnerImageZoom extends Component {
   handleLoad = (e) => {
     this.isLoaded = true;
     this.zoomImg = e.target;
-    this.zoomImg.setAttribute('width', this.zoomImg.offsetWidth * this.props.zoomScale);
-    this.zoomImg.setAttribute('height', this.zoomImg.offsetHeight * this.props.zoomScale);
+    const zoomImageClientRect = this.zoomImg.getClientRects()[0]
+    this.zoomImg.setAttribute('width', zoomImageClientRect.width * this.props.zoomScale);
+    this.zoomImg.setAttribute('height', zoomImageClientRect.height * this.props.zoomScale);
     this.bounds = this.getBounds(this.img, false);
     this.ratios = this.getRatios(this.bounds, this.zoomImg);
 
@@ -81,19 +82,18 @@ class InnerImageZoom extends Component {
   handleMouseMove = (e) => {
     let left = e.pageX - this.offsets.x;
     let top = e.pageY - this.offsets.y;
-
-    left = Math.max(Math.min(left, this.bounds.width), 0);
-    top = Math.max(Math.min(top, this.bounds.height), 0);
-
-    this.setState({
-      left: left * -this.ratios.x,
-      top: top * -this.ratios.y
-    });
+    window.requestAnimationFrame(function() {
+      left = Math.max(Math.min(left, this.bounds.width), 0);
+      top = Math.max(Math.min(top, this.bounds.height), 0);
+  
+      this.zoomImg.style.transform = `translate(${left * -this.ratios.x}px, ${top * -this.ratios.y}px)`
+    }.bind(this))
   }
 
   handleDragStart = (e) => {
-    this.offsets = this.getOffsets((e.pageX || e.changedTouches[0].pageX), (e.pageY || e.changedTouches[0].pageY), this.zoomImg.offsetLeft, this.zoomImg.offsetTop);
-    this.zoomImg.addEventListener(this.state.isTouch ? 'touchmove' : 'mousemove', this.handleDragMove, { passive: false });
+    const zoomImageClientRect = this.zoomImg.getClientRects()[0]
+    this.offsets = this.getOffsets((e.pageX || e.changedTouches[0].pageX), (e.pageY || e.changedTouches[0].pageY), zoomImageClientRect.left, zoomImageClientRect.top);
+    this.zoomImg.addEventListener(this.state.isTouch ? 'touchmove' : 'mousemove', this.handleDragMove, { passive: true });
 
     if (!this.state.isTouch) {
       this.eventPosition = {
@@ -104,19 +104,17 @@ class InnerImageZoom extends Component {
   }
 
   handleDragMove = (e) => {
-    e.preventDefault();
     e.stopPropagation();
 
     let left = (e.pageX || e.changedTouches[0].pageX) - this.offsets.x;
     let top = (e.pageY || e.changedTouches[0].pageY) - this.offsets.y;
 
-    left = Math.max(Math.min(left, 0), (this.zoomImg.offsetWidth - this.bounds.width) * -1);
-    top = Math.max(Math.min(top, 0), (this.zoomImg.offsetHeight - this.bounds.height) * -1);
-
-    this.setState({
-      left: left,
-      top: top
-    });
+    window.requestAnimationFrame(function() {
+      const zoomImageClientRect = this.zoomImg.getClientRects()[0]
+      left = Math.max(Math.min(left, 0), (zoomImageClientRect.width - this.bounds.width) * -1);
+      top = Math.max(Math.min(top, 0), (zoomImageClientRect.height - this.bounds.height) * -1);
+      this.zoomImg.style.transform = `translate(${left}px, ${top}px)`
+    }.bind(this))
   }
 
   handleDragEnd = (e) => {
@@ -235,9 +233,11 @@ class InnerImageZoom extends Component {
   }
 
   getRatios = (bounds, zoomImg) => {
+    const zoomImageClientRect = zoomImg.getClientRects()[0]
+    
     return {
-      x: (zoomImg.offsetWidth - bounds.width) / bounds.width,
-      y: (zoomImg.offsetHeight - bounds.height) / bounds.height
+      x: (zoomImageClientRect.width - bounds.width) / bounds.width,
+      y: (zoomImageClientRect.height - bounds.height) / bounds.height
     };
   }
 
@@ -253,11 +253,11 @@ class InnerImageZoom extends Component {
       className
     } = this.props;
 
+    const setImgRef = (el) => { this.img = el }
+
     const zoomImageProps = {
       src: zoomSrc || src,
       fadeDuration: this.state.isFullscreen ? 0 : fadeDuration,
-      top: this.state.top,
-      left: this.state.left,
       isZoomed: this.state.isZoomed,
       onLoad: this.handleLoad,
       onDragStart: this.handleDragStart,
@@ -268,7 +268,7 @@ class InnerImageZoom extends Component {
     return(
       <figure
         className={`iiz ${this.state.currentMoveType === 'drag' ? 'iiz--drag' : ''} ${className ? className : ''}`}
-        ref={(el) => { this.img = el; }}
+        ref={setImgRef}
         onTouchStart={this.handleTouchStart}
         onClick={this.handleClick}
         onMouseEnter={this.state.isTouch ? null : this.handleMouseEnter}

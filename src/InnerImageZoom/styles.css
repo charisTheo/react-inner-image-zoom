@@ -17,6 +17,7 @@
   pointer-events: none;
   visibility: visible;
   opacity: 1;
+  transform: translateZ(0);
 }
 
 .iiz__img--invisible {
@@ -28,13 +29,18 @@
   width: auto !important;
   max-width: none !important;
   position: absolute;
-  visibility: hidden;
   opacity: 0;
   display: block;
+  top: 0;
+  left: 0;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+iiz__zoom-img__wrapper {
+  transform: translateZ(0);
 }
 
 .iiz__zoom-img--visible {
-  visibility: visible;
   opacity: 1;
   cursor: zoom-out;
 }
