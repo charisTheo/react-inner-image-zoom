@@ -105,16 +105,15 @@ class InnerImageZoom extends Component {
 
   handleDragMove = (e) => {
     e.stopPropagation();
-
-    let left = (e.pageX || e.changedTouches[0].pageX) - this.offsets.x;
-    let top = (e.pageY || e.changedTouches[0].pageY) - this.offsets.y;
-
-    window.requestAnimationFrame(function() {
+    window.requestAnimationFrame(function(e) {
+      const { pageX, pageY, changedTouches } = e
+      const leftDelta = (pageX || changedTouches[0].pageX) - this.offsets.x;
+      const topDelta = (pageY || changedTouches[0].pageY) - this.offsets.y;
       const zoomImageClientRect = this.zoomImg.getClientRects()[0]
-      left = Math.max(Math.min(left, 0), (zoomImageClientRect.width - this.bounds.width) * -1);
-      top = Math.max(Math.min(top, 0), (zoomImageClientRect.height - this.bounds.height) * -1);
+      const left = Math.max(Math.min(leftDelta, 0), (zoomImageClientRect.width - this.bounds.width) * -1);
+      const top = Math.max(Math.min(topDelta, 0), (zoomImageClientRect.height - this.bounds.height) * -1);
       this.zoomImg.style.transform = `translate(${left}px, ${top}px)`
-    }.bind(this))
+    }.bind(this, e))
   }
 
   handleDragEnd = (e) => {

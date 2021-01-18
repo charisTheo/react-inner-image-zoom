@@ -33,10 +33,9 @@
   display: block;
   top: 0;
   left: 0;
-  transform-origin: 50% 50%;
   will-change: transform;
 }
-iiz__zoom-img__wrapper {
+.iiz__zoom-img__wrapper {
   transform: translateZ(0);
 }
 
@@ -52,8 +51,11 @@ iiz__zoom-img__wrapper {
   bottom: 0;
   left: 0;
   z-index: 10000;
+  overflow: scroll;
 }
-
+.iiz__zoom-portal .iiz__btn {
+  position: fixed;
+}
 .iiz__btn {
   background: rgba(255, 255, 255, 0.8);
   width: 40px;
