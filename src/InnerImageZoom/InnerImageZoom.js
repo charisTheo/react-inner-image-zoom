@@ -1,11 +1,11 @@
-import React, { Component, Fragment } from 'react';
+import React, { Component, Fragment, lazy, Suspense } from 'react';
 import PropTypes from 'prop-types';
 import Image from './components/Image';
-import ZoomImage from './components/ZoomImage';
-import FullscreenPortal from './components/FullscreenPortal';
-
+import Loader from './components/loader';
+const ZoomImage = lazy(() => import('./components/ZoomImage'));
+const FullscreenPortal = lazy(() => import('./components/FullscreenPortal'));
 class InnerImageZoom extends Component {
-  constructor (props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -80,13 +80,17 @@ class InnerImageZoom extends Component {
   }
 
   handleMouseMove = (e) => {
-    let left = e.pageX - this.offsets.x;
-    let top = e.pageY - this.offsets.y;
-    window.requestAnimationFrame(function() {
-      left = Math.max(Math.min(left, this.bounds.width), 0);
-      top = Math.max(Math.min(top, this.bounds.height), 0);
-  
+    const leftDelta = e.pageX - this.offsets.x;
+    const topDelta = e.pageY - this.offsets.y;
+    const left = Math.max(Math.min(leftDelta, this.bounds.width), 0);
+    const top = Math.max(Math.min(topDelta, this.bounds.height), 0);
+
+    window.requestAnimationFrame(function () {
+      if (!this.zoomImg) {
+        return
+      }
       this.zoomImg.style.transform = `translate(${left * -this.ratios.x}px, ${top * -this.ratios.y}px)`
+      this.zoomImg.style.top = `-${this.bounds.height}px`
     }.bind(this))
   }
 
@@ -105,7 +109,10 @@ class InnerImageZoom extends Component {
 
   handleDragMove = (e) => {
     e.stopPropagation();
-    window.requestAnimationFrame(function(e) {
+    window.requestAnimationFrame(function (e) {
+      if (!this.zoomImg) {
+        return
+      }
       const { pageX, pageY, changedTouches } = e
       const leftDelta = (pageX || changedTouches[0].pageX) - this.offsets.x;
       const topDelta = (pageY || changedTouches[0].pageY) - this.offsets.y;
@@ -135,16 +142,15 @@ class InnerImageZoom extends Component {
 
   handleClose = () => {
     this.zoomOut(() => {
+      this.setDefaults();
       setTimeout(() => {
-        this.setDefaults();
-
         this.setState({
           isActive: false,
           isTouch: false,
           isFullscreen: false,
           currentMoveType: this.props.moveType
         })
-      }, this.props.fadeDuration);
+      }, 0);
     });
   }
 
@@ -152,8 +158,8 @@ class InnerImageZoom extends Component {
     this.offsets = this.getOffsets(window.pageXOffset, window.pageYOffset, -this.bounds.left, -this.bounds.top);
 
     this.handleMouseMove({
-      pageX: pageX,
-      pageY: pageY
+      pageX,
+      pageY
     });
   }
 
@@ -169,8 +175,8 @@ class InnerImageZoom extends Component {
         pageX: initialPageX,
         pageY: initialPageY
       }],
-      preventDefault: () => {},
-      stopPropagation: () => {}
+      preventDefault: () => { },
+      stopPropagation: () => { }
     });
   }
 
@@ -233,14 +239,14 @@ class InnerImageZoom extends Component {
 
   getRatios = (bounds, zoomImg) => {
     const zoomImageClientRect = zoomImg.getClientRects()[0]
-    
+
     return {
       x: (zoomImageClientRect.width - bounds.width) / bounds.width,
       y: (zoomImageClientRect.height - bounds.height) / bounds.height
     };
   }
 
-  render () {
+  render() {
     const {
       src,
       srcSet,
@@ -252,27 +258,36 @@ class InnerImageZoom extends Component {
       className
     } = this.props;
 
+    const {
+      isActive,
+      isLoaded,
+      isFullscreen,
+      isZoomed,
+      isTouch,
+      currentMoveType
+    } = this.state;
+
     const setImgRef = (el) => { this.img = el }
 
     const zoomImageProps = {
       src: zoomSrc || src,
-      fadeDuration: this.state.isFullscreen ? 0 : fadeDuration,
-      isZoomed: this.state.isZoomed,
+      fadeDuration: isFullscreen ? 0 : fadeDuration,
+      isZoomed: isZoomed,
       onLoad: this.handleLoad,
       onDragStart: this.handleDragStart,
       onDragEnd: this.handleDragEnd,
-      onClose: this.state.isTouch ? this.handleClose : null
+      onClose: isTouch ? this.handleClose : null
     };
 
-    return(
+    return (
       <figure
-        className={`iiz ${this.state.currentMoveType === 'drag' ? 'iiz--drag' : ''} ${className ? className : ''}`}
+        className={`iiz ${currentMoveType === 'drag' ? 'iiz--drag' : ''} ${className ? className : ''}`}
         ref={setImgRef}
         onTouchStart={this.handleTouchStart}
         onClick={this.handleClick}
-        onMouseEnter={this.state.isTouch ? null : this.handleMouseEnter}
-        onMouseMove={this.state.currentMoveType === 'drag' || !this.state.isZoomed ? null : this.handleMouseMove}
-        onMouseLeave={this.state.isTouch ? null : this.handleMouseLeave}
+        onMouseEnter={isTouch ? null : this.handleMouseEnter}
+        onMouseMove={currentMoveType === 'drag' || !isZoomed ? null : this.handleMouseMove}
+        onMouseLeave={isTouch ? null : this.handleMouseLeave}
       >
         <Image
           src={src}
@@ -281,22 +296,27 @@ class InnerImageZoom extends Component {
           sources={sources}
           alt={alt}
           fadeDuration={this.props.fadeDuration}
-          isZoomed={this.state.isZoomed}
+          isZoomed={isZoomed}
         />
 
-        {this.state.isActive &&
+        {isActive &&
           <Fragment>
-            {this.state.isFullscreen ? (
-              <FullscreenPortal className="iiz__zoom-portal">
-                <ZoomImage {...zoomImageProps} />
-              </FullscreenPortal>
+            {isFullscreen ? (
+              <Suspense fallback={<Loader />}>
+                <FullscreenPortal className="iiz__zoom-portal">
+                  <ZoomImage {...zoomImageProps} />
+                </FullscreenPortal>
+              </Suspense>
             ) : (
-              <ZoomImage {...zoomImageProps} />
-            )}
+                <Suspense fallback={<Loader />}>
+                  <ZoomImage {...zoomImageProps} />
+                </Suspense>
+              )}
+            {!isZoomed && !isLoaded && <Loader />}
           </Fragment>
         }
 
-        {!this.state.isZoomed &&
+        {!isZoomed &&
           <span className="iiz__btn iiz__hint"></span>
         }
       </figure>
