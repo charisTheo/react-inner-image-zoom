@@ -120,7 +120,6 @@
   transform: rotate(45deg);
 }
 
-/* TODO minify CSS and copy paste before commiting */
 .loader-container {
   position: absolute;
   width: 100%;
